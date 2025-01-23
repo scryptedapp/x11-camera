@@ -12,7 +12,7 @@ import urllib.request
 import uuid
 
 import scrypted_sdk
-from scrypted_sdk import ScryptedDeviceBase, VideoCamera, ResponseMediaStreamOptions, RequestMediaStreamOptions, Settings, Setting, ScryptedInterface, ScryptedDeviceType, DeviceProvider, DeviceCreator, DeviceCreatorSettings, Readme
+from scrypted_sdk import ScryptedDeviceBase, VideoCamera, ResponseMediaStreamOptions, RequestMediaStreamOptions, Settings, Setting, ScryptedInterface, ScryptedDeviceType, DeviceProvider, DeviceCreator, DeviceCreatorSettings, Readme, TTYSettings
 
 
 def linux_data_home() -> str:
@@ -119,6 +119,19 @@ def copy_file_to(path: str, dest: str, make_executable: bool = False) -> None:
             subprocess.Popen(f'"{X11CameraPlugin.CYGWIN_LAUNCHER}" "chmod 755 {dest}"', shell=True).communicate()
 
 
+async def get_extra_paths() -> list[str]:
+    extra_paths = []
+    state = scrypted_sdk.systemManager.getSystemState()
+    for id in state.keys():
+        device: TTYSettings = scrypted_sdk.systemManager.getDeviceById(id)
+        try:
+            tty_settings = await device.getTTYSettings()
+            extra_paths.extend(tty_settings.get('paths', []))
+        except:
+            pass
+    return extra_paths
+
+
 class X11Camera(ScryptedDeviceBase, VideoCamera, Settings):
     def __init__(self, nativeId: str, parent: 'X11CameraPlugin'):
         super().__init__(nativeId)  # nativeId: <uuid>-<initial display num>
@@ -144,11 +157,7 @@ class X11Camera(ScryptedDeviceBase, VideoCamera, Settings):
             }
             xterm_tweaks = ""
 
-            # todo: look up exe in PATH with getTTYSettings
-
-            if not exe:
-                raise Exception("executable not found, cannot start stream.")
-
+            extra_paths = await get_extra_paths()
             args = self.args
 
             if platform.system() == "Windows":
@@ -156,10 +165,16 @@ class X11Camera(ScryptedDeviceBase, VideoCamera, Settings):
                 exe = f"'{exe}'"
                 xterm_tweaks = f"+tb +sb -fullscreen -geometry {self.display_dimensions}"
 
+            path = os.environ.get('PATH', '')
             if platform.system() == 'Darwin':
-                path = os.environ.get('PATH')
                 path = f'/opt/X11/bin:/opt/homebrew/opt/gnu-getopt/bin:/usr/local/opt/gnu-getopt/bin:{path}'
-                env['PATH'] = path
+            for extra_path in extra_paths:
+                if platform.system() == "Windows":
+                    extra_path = subprocess.check_output([X11CameraPlugin.CYGWIN_LAUNCHER, f"cygpath '{extra_path}'"]).decode().strip()
+                path = f'{extra_path}:{path}'
+            if path.endswith(':'):
+                path = path[:-1]
+            env['PATH'] = path
 
             if platform.system() == 'Linux':
                 env['XDG_DATA_HOME'] = linux_data_home()
