@@ -21,7 +21,7 @@ def linux_data_home() -> str:
     return os.path.expanduser('~/.local/share')
 
 
-async def run_and_stream_output(cmd: str, env: Dict[str, str] = {}, return_pid: bool = False) -> Tuple[asyncio.Future, int] | None:
+async def run_and_stream_output(cmd: str, env: Dict[str, str] = {}, return_pid: bool = False) -> Tuple[asyncio.Future, int]:
     p = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, env=dict(os.environ, **env))
 
     async def read_streams():
@@ -558,7 +558,7 @@ class X11CameraPlugin(ScryptedDeviceBase, DeviceProvider, DeviceCreator):
 
 
 class DownloaderBase(ScryptedDeviceBase):
-    def __init__(self, nativeId: str | None = None):
+    def __init__(self, nativeId: str = None):
         super().__init__(nativeId)
 
     def downloadFile(self, url: str, filename: str):
