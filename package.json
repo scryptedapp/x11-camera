@@ -1,6 +1,6 @@
 {
    "name": "@scrypted/x11-camera",
-   "version": "0.0.3",
+   "version": "0.0.4",
    "description": "X11 Virtual Cameras for Scrypted",
    "license": "Apache",
    "keywords": [
