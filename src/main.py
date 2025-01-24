@@ -170,9 +170,10 @@ class X11Camera(ScryptedDeviceBase, VideoCamera, Settings):
                 path = f'/opt/X11/bin:/opt/homebrew/opt/gnu-getopt/bin:/usr/local/opt/gnu-getopt/bin:{path}'
             for extra_path in extra_paths:
                 if platform.system() == "Windows":
-                    extra_path = subprocess.check_output([X11CameraPlugin.CYGWIN_LAUNCHER, f"cygpath '{extra_path}'"]).decode().strip()
-                path = f'{extra_path}:{path}'
-            if path.endswith(':'):
+                    path = f'{extra_path};{path}'
+                else:
+                    path = f'{extra_path}:{path}'
+            if path.endswith(':') or path.endswith(';'):
                 path = path[:-1]
             env['PATH'] = path
 
@@ -187,11 +188,15 @@ class X11Camera(ScryptedDeviceBase, VideoCamera, Settings):
                 if font != 'Default':
                     fontselection = f'-fa \'{font}\''
 
+            wrapper_program = ""
+            if platform.system() == "Windows":
+                wrapper_program = "winpty"
+
             crash_count = 0
             display_num = self.virtual_display_num
             while True:
                 subprocess_task = asyncio.create_task(
-                    run_self_cleanup_subprocess(f'{X11CameraPlugin.XVFB_RUN} -n {display_num} -s \'-screen 0 {self.display_dimensions}x24\' -f {X11CameraPlugin.XAUTH}{display_num} xterm {xterm_tweaks} {fontselection} -en UTF-8 -maximized -e {exe} {args}',
+                    run_self_cleanup_subprocess(f'{X11CameraPlugin.XVFB_RUN} -n {display_num} -s \'-screen 0 {self.display_dimensions}x24\' -f {X11CameraPlugin.XAUTH}{display_num} xterm {xterm_tweaks} {fontselection} -en UTF-8 -maximized -e {wrapper_program} {exe} {args}',
                                                 env=env, kill_proc='Xvfb', proc_id=f"{display_num}")
                 )
                 sleep_task = asyncio.create_task(asyncio.sleep(15))
